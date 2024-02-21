@@ -1,94 +1,55 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
 
-import useStore from './hooks/useStore';
+import { yupResolver } from '@hookform/resolvers/yup';
+
 import { sendFormData } from './utils';
-import useError from './hooks/useError';
+import fieldsSchema from './fieldsSchema';
 
 function App() {
-	const { getErrors, setEmailError, setPasswordError, setConfirmPasswordError } =
-		useError();
-	const { emailError, passwordError, confirmPasswordError } = getErrors();
+	const {
+		register,
+		handleSubmit,
+		getValues,
+		formState: { errors },
+	} = useForm({
+		defaultValues: {
+			email: '',
+			password: '',
+			confirmPassword: '',
+		},
+		resolver: yupResolver(fieldsSchema),
+	});
 
-	const { getState, updateState } = useStore();
-	const { email, password, confirmPassword } = getState();
-
-	const buttonRef = useRef(null);
-
-	const onSubmit = event => {
-		event.preventDefault();
-		sendFormData(getState());
-	};
-
-	const onChange = ({ target }) => {
-		updateState(target.name, target.value);
-	};
-
-	const onEmailBlur = ({ target }) => {
-		let newError = null;
-
-		if (!/\S+@\S+\.\S+/.test(target.value) && target.value.length > 0) {
-			newError = 'Неверный почтовый адрес. Должны присутствовать символы "@" и "."';
-		}
-		setEmailError(newError);
-
-		if (email) {
+	useEffect(() => {
+		if (getValues('password') === getValues('confirmPassword')) {
 			buttonRef.current.focus();
 		}
-	};
+	});
 
-	const onPasswordBlur = ({ target }) => {
-		let newError = null;
+	const emailError = errors.email?.message;
+	const passwordError = errors.password?.message;
+	const confirmPasswordError = errors.confirmPassword?.message;
 
-		if (!/^(?=.*[A-Z])(?=.*\d).{8,}$/.test(target.value) && target.value.length > 0) {
-			newError =
-				'Пароль должен содержать хотя бы одну цифру, одну прописную букву и не менее 8 символов.';
-		}
-		setPasswordError(newError);
-	};
-
-	const onConfirmPassword = ({ target }) => {
-		onChange({ target });
-		if (target.value.length === password.length) {
-			buttonRef.current.focus();
-		} else if (target.value.length === 0) {
-			setConfirmPasswordError(null);
-		}
-	};
-	const onConfirmPasswordBlur = ({ target }) => {
-		let newError = null;
-
-		if (target.value !== password) {
-			newError = 'Пароли не совпадают!';
-		}
-
-		setConfirmPasswordError(newError);
-	};
+	const buttonRef = useRef();
 
 	return (
-		<form onSubmit={onSubmit}>
+		<form onSubmit={handleSubmit(sendFormData)}>
 			<h2>Sign up</h2>
 			{emailError && <p>{emailError}</p>}
 			{passwordError && <p>{passwordError}</p>}
 			{confirmPasswordError && <p>{confirmPasswordError}</p>}
+
 			<div className="inputs">
 				<label htmlFor="email">Email</label>
-				<input
-					id="email"
-					name="email"
-					placeholder="Your email"
-					value={email}
-					onChange={onChange}
-					onBlur={onEmailBlur}
-				/>
+				<input id="email" name="email" placeholder="Your email" {...register('email')} />
 				<label htmlFor="password">Password</label>
 				<input
 					id="password"
 					name="password"
 					type="password"
 					placeholder="Your password"
-					value={password}
-					onChange={onChange}
-					onBlur={onPasswordBlur}
+					{...register('password')}
 				/>
 				<label htmlFor="confirmPassword">Confirm Password</label>
 				<input
@@ -96,21 +57,12 @@ function App() {
 					name="confirmPassword"
 					type="password"
 					placeholder="Confirm Password"
-					value={confirmPassword}
-					onChange={onConfirmPassword}
-					onBlur={onConfirmPasswordBlur}
+					{...register('confirmPassword')}
 				/>
 				<button
-					ref={buttonRef}
+					disabled={!!emailError || !!passwordError || confirmPasswordError}
 					type="submit"
-					disabled={
-						!!emailError ||
-						!!passwordError ||
-						!!confirmPasswordError ||
-						!email ||
-						!password ||
-						!confirmPassword
-					}
+					ref={buttonRef}
 				>
 					SIGN UP
 				</button>
